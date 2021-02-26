@@ -10,9 +10,17 @@
     </CLASSES>
     <JAVADOC>
       <root url="jar://$MAVEN_REPOSITORY$/com/android/tools/ddms/ddmlib/25.3.0/ddmlib-25.3.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/android/tools/common/25.3.0/common-25.3.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/android/tools/annotations/25.3.0/annotations-25.3.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/guava/18.0/guava-18.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/net/sf/kxml/kxml2/2.3.0/kxml2-2.3.0-javadoc.jar!/" />
     </JAVADOC>
     <SOURCES>
       <root url="jar://$MAVEN_REPOSITORY$/com/android/tools/ddms/ddmlib/25.3.0/ddmlib-25.3.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/android/tools/common/25.3.0/common-25.3.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/android/tools/annotations/25.3.0/annotations-25.3.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/guava/18.0/guava-18.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/net/sf/kxml/kxml2/2.3.0/kxml2-2.3.0-sources.jar!/" />
     </SOURCES>
   </library>
 </component>

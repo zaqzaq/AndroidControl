@@ -1,6 +1,7 @@
 
-let ip = "127.0.0.1"
-let port = 6655
+let ip = window.location.hostname
+let port = window.location.port
+port=port==""?80:port
 
 /** nav-height:24px */
 const nav_height = 24;
