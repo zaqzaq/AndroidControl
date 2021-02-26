@@ -74,10 +74,10 @@ public class AdbServer {
         try {
             services = UsbHostManager.getUsbServices();
         } catch (UsbException e) {
-            e.printStackTrace(); // TODO: LOG
+            logger.error("监听USB设备的状态异常",e);
         }
         services.addUsbServicesListener(new MyUSBListener());
-        System.out.println("AdbServer.listenUSB: 已开启USB设备监听...");
+        logger.info("AdbServer.listenUSB: 已开启USB设备监听...");
     }
     
     /**
@@ -234,10 +234,14 @@ public class AdbServer {
             }
             // 如果在已有列表不存在，添加到已有列表
             if (!exists) {
-                AdbDevice device = new AdbDevice(iDevice);
-                logger.info("Android设备连接：" + device.getSerialNumber());
-                this.adbDeviceList.add(device);
-                listeners.forEach(l -> l.onAdbDeviceConnected(device));
+                if(iDevice.getState()== IDevice.DeviceState.OFFLINE){
+                    logger.warn("Android设备离线["+iDevice.toString()+"]");
+                }else{
+                    AdbDevice device = new AdbDevice(iDevice);
+                    logger.info("Android设备连接["+iDevice.toString()+"]-"+ device.getSerialNumber());
+                    this.adbDeviceList.add(device);
+                    listeners.forEach(l -> l.onAdbDeviceConnected(device));
+                }
             }
         }
         // 移除已断开的设备
@@ -292,7 +296,8 @@ public class AdbServer {
             }
             maxWaittingTime -= 1;
             if (maxWaittingTime == 0) {
-                disconnectAdb();
+//                disconnectAdb();
+                logger.warn("检测初始化设备列表失败-------------_--------------!");
                 return false;
             }
         }
