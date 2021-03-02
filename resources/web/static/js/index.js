@@ -8,7 +8,8 @@ let device_list = new Vue({
     el: '#phone-list',
     data: {
         devices: [],
-        name: "zhuhui"
+        name: "zhuhui",
+        win:window
     },
     methods: {
         /**
@@ -177,6 +178,11 @@ window.onload = function() {
     // });
 
     serverList.addServer('localhost', 6655)
+
+    let hostname = window.location.hostname
+    let port = window.location.port
+    port=port==""?80:port
+    serverList.addServer(hostname, port)
 }
 
 /**

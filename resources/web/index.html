@@ -20,7 +20,7 @@
                 <p>{{p.sn}}@{{p.server.ip}}:{{p.server.port}}</p>
               </div>
               <div class="phone-body">
-                <img v-bind:onclick="'phoneClick(\'' + p.sn + '\')'" style="max-width: 100%;" class="phone-shot" v-bind:src="'http://127.0.0.1:6655/shot/' + p.sn" /> 
+                <img v-bind:onclick="'phoneClick(\'' + p.sn + '\')'" style="max-width: 100%;" class="phone-shot" v-bind:src="win.location.origin+'/shot/' + p.sn" />
               </div>
               <div class="phone-footer phone-info">
                 <div>{{p.sn}}<a style="float: right; margin-right:8px;">🖕</a></div>
@@ -35,7 +35,7 @@
             </div>
             <div class="phone-body" id="control-all-phone">
               <div v-for="p in devices" class="small-phone">
-                <img style="max-width: 100%;" class="phone-shot" v-bind:src="'http://127.0.0.1:6655/shot/' + p.sn">
+                <img style="max-width: 100%;" class="phone-shot" v-bind:src="win.location.origin+'/shot/' + p.sn">
               </div>
             </div>
             <div class="phone-footer phone-info">

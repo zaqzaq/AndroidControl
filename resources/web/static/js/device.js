@@ -34,7 +34,7 @@ class DeviceWindow {
     constructor(win, deviceInfo, defaultDisplaySize={w:0, h:0}) {
         this.win = win // 操作的窗口
         this.deviceInfo = deviceInfo
-        this.scale = 0.4 // minicap缩放比例
+        this.scale = 1 //FIXME 后端minicap图片缩放质量
         this.rotate = false // 屏幕是否旋转，默认=false=竖屏
         this.keyMap = false // 是否键盘映射
         this.displaySize = defaultDisplaySize
@@ -126,7 +126,7 @@ window.onload = function() {
         max: 100,
         min: 10,
         step: 5,
-        value: 20,
+        value: 80,//FIXME 前端展示绽放大小比例
         change: onDisplayScaleChange
     })
 
@@ -134,7 +134,7 @@ window.onload = function() {
         max: 100,
         min: 5,
         step: 5,
-        value: 30,
+        value: 80,//FIXME 传输图片清晰度
         change: onScaleChange
     })
 
