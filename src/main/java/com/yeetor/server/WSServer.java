@@ -261,7 +261,9 @@ public class WSServer implements IWebsocketEvent, MinicapListener, MinitouchList
                 dataQueue.add(new ImageData(data));
                 // 挑选没有超时的图片
                 ImageData d = getUsefulImage();
-                sendImage(d.data);
+                if(null!=d){
+                    sendImage(d.data);
+                }
             } else {
                 sendImage(data);
             }

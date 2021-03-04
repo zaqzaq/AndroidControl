@@ -26,37 +26,15 @@
 
 package com.yeetor.server.handler;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.yeetor.adb.AdbDevice;
-import com.yeetor.adb.AdbServer;
-import com.yeetor.androidcontrol.client.LocalClient;
-import com.yeetor.minicap.Banner;
-import com.yeetor.minicap.Minicap;
-import com.yeetor.minicap.MinicapListener;
-import com.yeetor.minicap.ScreencapBase;
-import com.yeetor.minitouch.MinitouchListener;
-import com.yeetor.protocol.TextProtocol;
-import com.yeetor.server.AndroidControlServer;
-import com.yeetor.server.ScreencapService;
-import com.yeetor.server.ServicesPool;
-import com.yeetor.server.WSServer;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelDuplexHandler;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.websocketx.*;
-import io.netty.util.CharsetUtil;
 import io.netty.util.ReferenceCountUtil;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
 
 public class WSHandler extends SimpleChannelInboundHandler<Object> {
@@ -81,33 +59,45 @@ public class WSHandler extends SimpleChannelInboundHandler<Object> {
         super(autorelease);
         this.eventListener = eventListener;
     }
-    
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        super.channelInactive(ctx);
+        if (eventListener != null) {
+            eventListener.onDisconnect(ctx);
+        }
+    }
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
-        if (msg instanceof FullHttpRequest) {
-            FullHttpRequest req = (FullHttpRequest) msg;
-            
-            if (!req.getDecoderResult().isSuccess() ||
-                    (!"websocket".equals(req.headers().get("Upgrade")))) {
-                ctx.fireChannelRead(req);
-                return;
+        try {
+            if (msg instanceof FullHttpRequest) {
+                FullHttpRequest req = (FullHttpRequest) msg;
+
+                if (!req.getDecoderResult().isSuccess() ||
+                        (!"websocket".equals(req.headers().get("Upgrade")))) {
+                    ctx.fireChannelRead(req.retain());
+                    return;
+                }
+                handleWSConnect(ctx, req);
+            } else if (msg instanceof WebSocketFrame) {
+                WebSocketFrame frame = (WebSocketFrame) msg;
+                handlerWebSocketFrame(ctx, frame);
             }
-            handleWSConnect(ctx, req);
-        } else if (msg instanceof WebSocketFrame) {
-            WebSocketFrame frame = (WebSocketFrame) msg;
-            handlerWebSocketFrame(ctx, frame);
+        } catch (Exception e) {
+            logger.error("数据包处理异常",e);
+        } finally {
+            if (!autorelease) {
+                ReferenceCountUtil.release(msg);
+            }
         }
-        if (!autorelease)
-            ReferenceCountUtil.release(msg);
+
     }
 
     private void handlerWebSocketFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {
         // 判断是否关闭链路的指令
         if (frame instanceof CloseWebSocketFrame && handshaker != null) {
             handshaker.close(ctx.channel(), (CloseWebSocketFrame) frame.retain());
-            if (eventListener != null) {
-                eventListener.onDisconnect(ctx);
-            }
             return;
         }
         // 判断是否ping消息
@@ -142,7 +132,15 @@ public class WSHandler extends SimpleChannelInboundHandler<Object> {
         if (handshaker == null) {
             WebSocketServerHandshakerFactory.sendUnsupportedWebSocketVersionResponse(ctx.channel());
         } else {
-            handshaker.handshake(ctx.channel(), msg);
+            handshaker.handshake(ctx.channel(), msg).addListener(future -> {
+                if(future.isSuccess()){
+                    if (eventListener != null) {
+                        eventListener.onConnect(ctx);
+                    }else {
+                        logger.warn("链接握手失败",future.cause());
+                    }
+                }
+            });
         }
     }
 }

@@ -3,6 +3,11 @@ let ip = window.location.hostname
 let port = window.location.port
 port=port==""?80:port
 
+const scaleDevice=0.3;//FIXME 后端minicap图片缩放质量
+const scaleDisplay=80;//FIXME 前端展示绽放大小比例
+const rotateDevice=false; //FIXME 是否后端minicap图片旋转
+const rotateDisplay=0;//FIXME 前端展示旋转
+
 /** nav-height:24px */
 const nav_height = 24;
 /** footer-height: 42px */
@@ -34,8 +39,8 @@ class DeviceWindow {
     constructor(win, deviceInfo, defaultDisplaySize={w:0, h:0}) {
         this.win = win // 操作的窗口
         this.deviceInfo = deviceInfo
-        this.scale = 1 //FIXME 后端minicap图片缩放质量
-        this.rotate = false // 屏幕是否旋转，默认=false=竖屏
+        this.scale = scaleDevice
+        this.rotate = rotateDevice // 屏幕是否旋转，默认=false=默认屏
         this.keyMap = false // 是否键盘映射
         this.displaySize = defaultDisplaySize
     }
@@ -120,13 +125,16 @@ window.onload = function() {
     
     deviceInfo.physicsSize.w = urlParams.w
     deviceInfo.physicsSize.h = urlParams.h
-    
+
+//  document.documentElement.clientWidth;
+//  document.documentElement.clientHeight;
+
     // 滑动条初始化
     var displayScaleSlider = $("#display-scale-slider").slider({
         max: 100,
         min: 10,
         step: 5,
-        value: 80,//FIXME 前端展示绽放大小比例
+        value: scaleDisplay,
         change: onDisplayScaleChange
     })
 
@@ -134,7 +142,7 @@ window.onload = function() {
         max: 100,
         min: 5,
         step: 5,
-        value: 80,//FIXME 传输图片清晰度
+        value: scaleDevice*100,
         change: onScaleChange
     })
 
@@ -295,6 +303,8 @@ let isDown = false
 var canvas = document.getElementById("phone-screen");
 var g = canvas.getContext('2d');
 
+//前端界面旋转
+canvas.style.transform = 'rotate('+(rotateDisplay%360)+'deg)'
 
 String.prototype.startWith=function(str){
     var reg=new RegExp("^"+str);

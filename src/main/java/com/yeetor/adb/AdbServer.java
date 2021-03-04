@@ -152,7 +152,9 @@ public class AdbServer {
             if (adbDevice.getUsbDevice() == device.getUsbDevice()) {
                 logger.info("Android设备断开：" + adbDevice.getSerialNumber());
                 it.remove();
-                listeners.forEach(l -> l.onAdbDeviceDisConnected(device));
+                if (!listeners.isEmpty()) {
+                    listeners.forEach(l -> l.onAdbDeviceDisConnected(device));
+                }
             }
         }
     }
@@ -240,7 +242,9 @@ public class AdbServer {
                     AdbDevice device = new AdbDevice(iDevice);
                     logger.info("Android设备连接["+iDevice.toString()+"]-"+ device.getSerialNumber());
                     this.adbDeviceList.add(device);
-                    listeners.forEach(l -> l.onAdbDeviceConnected(device));
+                    if (!listeners.isEmpty()) {
+                        listeners.forEach(l -> l.onAdbDeviceConnected(device));
+                    }
                 }
             }
         }
@@ -465,7 +469,7 @@ public class AdbServer {
     public AdbForward[] getForwardList() {
         ListenableFuture<List<AdbForward>> future = executeGetForwardList();
         try {
-            List<AdbForward> s = future.get(1, TimeUnit.SECONDS);
+            List<AdbForward> s = future.get(2, TimeUnit.SECONDS);
             AdbForward[] ret = new AdbForward[s.size()];
             s.toArray(ret);
             return ret;
