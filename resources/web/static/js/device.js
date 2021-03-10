@@ -6,7 +6,176 @@ port=port==""?80:port
 const scaleDevice=0.3;//FIXME 后端minicap图片缩放质量
 const scaleDisplay=80;//FIXME 前端展示绽放大小比例
 const rotateDevice=false; //FIXME 是否后端minicap图片旋转
-const rotateDisplay=0;//FIXME 前端展示旋转
+const isPhone=document.documentElement.clientWidth<document.documentElement.clientHeight;
+const rotateDisplay=isPhone?90:0;//FIXME 前端展示旋转
+
+window.onload = function() {
+
+    // 通过url参数初始化
+    let urlParams = initWithUrlParams();
+
+    deviceInfo.serialNumber = urlParams.sn
+
+    deviceInfo.physicsSize.w = urlParams.w
+    deviceInfo.physicsSize.h = urlParams.h
+
+    // 滑动条初始化
+    var displayScaleSlider = $("#display-scale-slider").slider({
+        max: 100,
+        min: 10,
+        step: 5,
+        value: scaleDisplay,
+        change: onDisplayScaleChange
+    })
+
+    var scaleSlider = $('#scale-slider').slider({
+        max: 100,
+        min: 5,
+        step: 5,
+        value: scaleDevice*100,
+        change: onScaleChange
+    })
+
+    $('#rotateCheckBox').on('click', function() {
+        deviceWindow.rotate = $('#rotateCheckBox').prop('checked')
+        net.request("M_START", {type: "cap", config: {rotate: deviceWindow.rotate ? 90 : 0, scale: deviceWindow.scale}})
+        // 隐藏设置窗口
+        $('#myModal').modal('hide')
+        // 显示等待capservice窗口
+        $('#resetScaleModal').modal('show')
+
+        onDisplayScaleChange()
+    })
+
+    $('#keyEventCheckBox').on('click', function() {
+        deviceWindow.keyMap = $('#keyEventCheckBox').prop('checked')
+    })
+
+    function onDisplayScaleChange() {
+        let scale = displayScaleSlider.slider("value") / 100.0;
+        deviceWindow.displaySize.w = parseInt(deviceInfo.physicsSize.w * scale)
+        deviceWindow.displaySize.h = parseInt(deviceInfo.physicsSize.h * scale)
+        deviceWindow.resize(false)
+
+        canvas.width = deviceWindow.displaySize.w;
+        canvas.height = deviceWindow.displaySize.h;
+        g.drawImage(canvas.img, 0, 0, canvas.width, canvas.height);
+    }
+
+    function onScaleChange() {
+        let scale = scaleSlider.slider("value") / 100.0
+
+        deviceWindow.scale = scale
+        // vue
+        title.outputScale = scale
+
+        net.request("M_START", {type: "cap", config: {rotate: deviceWindow.rotate ? 90 : 0, scale: deviceWindow.scale}})
+        // 隐藏设置窗口
+        $('#myModal').modal('hide')
+        // 显示等待capservice窗口
+        $('#resetScaleModal').modal('show')
+    }
+
+    // 初始化窗口
+    let scale = displayScaleSlider.slider("value") / 100.0;
+    deviceWindow = new DeviceWindow($('#content'), deviceInfo, {
+        w: deviceInfo.physicsSize.w * scale,
+        h: deviceInfo.physicsSize.h * scale
+    })
+
+    deviceWindow.resize()
+
+    // vue
+    title.outputScale = scale
+
+    // 连接服务器
+    net = new NetWork(ip, port)
+    net.connect({
+        onopen() {
+            net.request("M_WAIT", {sn: deviceInfo.serialNumber})
+        },
+        onclose() {
+            console.log("连接中断");
+            //TODO 重新连接
+//            deviceWindow.win.close()
+        },
+        onmessage(msg) {
+            let data = msg.data
+            if (typeof(data) == 'string') {
+                this.ontext(data)
+            } else {
+                this.onbinary(data)
+            }
+        },
+        ontext(text) {
+            let sp = text.indexOf('://')
+            if (sp == -1) {
+                console.log("无效的协议")
+                this.onclose()
+            }
+
+            let head = text.substr(0, sp)
+            let body = text.substring(sp + 3)
+
+            let func = this[head]
+            func.call(this, body)
+        },
+        onbinary(data) {
+            let self = this
+            let fr = new FileReader()
+            fr.readAsArrayBuffer(data.slice(0, 2))
+            fr.onload = function() {
+                let headType = new Int16Array(fr.result)[0]
+                switch (headType) {
+                    case 0x0011:
+                        self.SM_JPG(data.slice(6))
+                    break;
+                }
+            }
+        },
+        SM_OPENED(body) {
+            net.request("M_START", {type: "cap", config: {rotate: deviceWindow.rotate ? 90 : 0, scale: deviceWindow.scale}})
+            net.request("M_START", {type: "event"})
+        },
+        SM_SERVICE_STATE(body) {
+            console.log("SM_SERVICE_STATE" + body)
+            let obj = JSON.parse(body)
+            console.warn(obj.type + ":" + obj.stat)
+            if (obj.type == 'cap' && obj.stat == 'open') {
+                // 隐藏等待capservice的窗口
+                $('#resetScaleModal').modal('hide')
+                this.M_WAITTING()
+            }
+        },
+        SM_JPG(jpgdata) {
+            var blob = new Blob([jpgdata], {type: 'image/jpeg'});
+            var URL = window.URL || window.webkitURL;
+            var img = new Image();
+            img.onload = function () {
+                canvas.width = parseInt(deviceWindow.displaySize.w);
+                canvas.height = parseInt(deviceWindow.displaySize.h);
+                console.log(canvas.width, canvas.height)
+                g.drawImage(img, 0, 0, canvas.width, canvas.height);
+                img.onLoad = null;
+                img = null;
+                u = null;
+                blob = null;
+            };
+            var u = URL.createObjectURL(blob);
+            img.src = u;
+            canvas.img = img
+
+            if (deviceWindow.resized) {
+                deviceWindow.resize()
+            }
+
+            this.M_WAITTING()
+        },
+        M_WAITTING() {
+            net.request("M_WAITTING", null)
+        }
+    })
+}
 
 /** nav-height:24px */
 const nav_height = 24;
@@ -114,176 +283,6 @@ let title = new Vue({
         }
     }
 })
-
-
-window.onload = function() {
-
-    // 通过url参数初始化
-    let urlParams = initWithUrlParams();
-
-    deviceInfo.serialNumber = urlParams.sn
-    
-    deviceInfo.physicsSize.w = urlParams.w
-    deviceInfo.physicsSize.h = urlParams.h
-
-//  document.documentElement.clientWidth;
-//  document.documentElement.clientHeight;
-
-    // 滑动条初始化
-    var displayScaleSlider = $("#display-scale-slider").slider({
-        max: 100,
-        min: 10,
-        step: 5,
-        value: scaleDisplay,
-        change: onDisplayScaleChange
-    })
-
-    var scaleSlider = $('#scale-slider').slider({
-        max: 100,
-        min: 5,
-        step: 5,
-        value: scaleDevice*100,
-        change: onScaleChange
-    })
-
-    $('#rotateCheckBox').on('click', function() {
-        deviceWindow.rotate = $('#rotateCheckBox').prop('checked')
-        net.request("M_START", {type: "cap", config: {rotate: deviceWindow.rotate ? 90 : 0, scale: deviceWindow.scale}})
-        // 隐藏设置窗口
-        $('#myModal').modal('hide')
-        // 显示等待capservice窗口
-        $('#resetScaleModal').modal('show')
-
-        onDisplayScaleChange()
-    })
-
-    $('#keyEventCheckBox').on('click', function() {
-        deviceWindow.keyMap = $('#keyEventCheckBox').prop('checked')
-    })
-
-    function onDisplayScaleChange() {
-        let scale = displayScaleSlider.slider("value") / 100.0;
-        deviceWindow.displaySize.w = parseInt(deviceInfo.physicsSize.w * scale)
-        deviceWindow.displaySize.h = parseInt(deviceInfo.physicsSize.h * scale)
-        deviceWindow.resize(false)
-
-        canvas.width = deviceWindow.displaySize.w;
-        canvas.height = deviceWindow.displaySize.h;
-        g.drawImage(canvas.img, 0, 0, canvas.width, canvas.height);
-    }
-
-    function onScaleChange() {
-        let scale = scaleSlider.slider("value") / 100.0
-
-        deviceWindow.scale = scale
-        // vue
-        title.outputScale = scale
-        
-        net.request("M_START", {type: "cap", config: {rotate: deviceWindow.rotate ? 90 : 0, scale: deviceWindow.scale}})
-        // 隐藏设置窗口
-        $('#myModal').modal('hide')
-        // 显示等待capservice窗口
-        $('#resetScaleModal').modal('show')
-    }
-
-    // 初始化窗口
-    let scale = displayScaleSlider.slider("value") / 100.0;
-    deviceWindow = new DeviceWindow($('#content'), deviceInfo, {
-        w: deviceInfo.physicsSize.w * scale, 
-        h: deviceInfo.physicsSize.h * scale
-    })
-
-    deviceWindow.resize()
-
-    // vue
-    title.outputScale = scale
-
-    // 连接服务器
-    net = new NetWork(ip, port)
-    net.connect({
-        onopen() {
-            net.request("M_WAIT", {sn: deviceInfo.serialNumber})
-        },
-        onclose() {
-            deviceWindow.win.close()
-        },
-        onmessage(msg) {
-            let data = msg.data
-            if (typeof(data) == 'string') {
-                this.ontext(data)
-            } else {
-                this.onbinary(data)
-            }
-        },
-        ontext(text) {
-            let sp = text.indexOf('://')
-            if (sp == -1) {
-                console.log("无效的协议")
-                this.onclose()
-            }
-
-            let head = text.substr(0, sp)
-            let body = text.substring(sp + 3)
-
-            let func = this[head]
-            func.call(this, body)
-        },
-        onbinary(data) {
-            let self = this
-            let fr = new FileReader()
-            fr.readAsArrayBuffer(data.slice(0, 2))
-            fr.onload = function() {
-                let headType = new Int16Array(fr.result)[0]
-                switch (headType) {
-                    case 0x0011:
-                        self.SM_JPG(data.slice(6))
-                    break;
-                }
-            }
-        },
-        SM_OPENED(body) {
-            net.request("M_START", {type: "cap", config: {rotate: deviceWindow.rotate ? 90 : 0, scale: deviceWindow.scale}})
-            net.request("M_START", {type: "event"})
-        },
-        SM_SERVICE_STATE(body) {
-            console.log("SM_SERVICE_STATE" + body)
-            let obj = JSON.parse(body)
-            console.warn(obj.type + ":" + obj.stat)
-            if (obj.type == 'cap' && obj.stat == 'open') {
-                // 隐藏等待capservice的窗口
-                $('#resetScaleModal').modal('hide')
-                this.M_WAITTING()
-            }
-        },
-        SM_JPG(jpgdata) {
-            var blob = new Blob([jpgdata], {type: 'image/jpeg'});
-            var URL = window.URL || window.webkitURL;
-            var img = new Image();
-            img.onload = function () {
-                canvas.width = parseInt(deviceWindow.displaySize.w);
-                canvas.height = parseInt(deviceWindow.displaySize.h);
-                console.log(canvas.width, canvas.height)
-                g.drawImage(img, 0, 0, canvas.width, canvas.height);
-                img.onLoad = null;
-                img = null;
-                u = null;
-                blob = null;
-            };
-            var u = URL.createObjectURL(blob);
-            img.src = u;
-            canvas.img = img
-            
-            if (deviceWindow.resized) {
-                deviceWindow.resize()
-            }
-
-            this.M_WAITTING()
-        },
-        M_WAITTING() {
-            net.request("M_WAITTING", null)
-        }
-    })
-}
 
 /**
  * 返回url参数组成的js对象
