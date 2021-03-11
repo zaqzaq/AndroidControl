@@ -28,6 +28,7 @@ package com.yeetor.server;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.util.concurrent.RateLimiter;
 import com.yeetor.adb.AdbDevice;
 import com.yeetor.adb.AdbServer;
 import com.yeetor.adb.AdbUtils;
@@ -49,14 +50,16 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.log4j.Logger;
 
 import javax.xml.soap.Text;
 import java.lang.ref.PhantomReference;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.*;
 
 public class WSServer implements IWebsocketEvent, MinicapListener, MinitouchListener, IAdbServerListener {
 
@@ -80,10 +83,22 @@ public class WSServer implements IWebsocketEvent, MinicapListener, MinitouchList
     Channel channel = null;
 
     /**
+     * 发送图片限定每秒最多1张图片
+     */
+    final int permitsPerSecond=1;
+    RateLimiter rateLimiterSendImage=RateLimiter.create(permitsPerSecond);
+    /**
+     * 防止最后一张被limit了
+     */
+    volatile byte[] lastJPG;
+    ScheduledFuture lastScheduled;
+    ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(1,
+            new BasicThreadFactory.Builder().namingPattern("lastJPG-schedule-pool-%d").daemon(true).build());
+    /**
      * TODO 古老的优化方法
      */
     static final int DATA_TIMEOUT = 100; //ms
-    private boolean isWaitting = false;
+    private volatile boolean isWaitting = false;
     private BlockingQueue<ImageData> dataQueue = new LinkedBlockingQueue<ImageData>();
     
     WSServer() {
@@ -256,6 +271,8 @@ public class WSServer implements IWebsocketEvent, MinicapListener, MinitouchList
 
     @Override
     public void onJPG(Minicap minicap, byte[] data) {
+        lastJPG=data;
+
         if (isWaitting) {
             if (dataQueue.size() > 0) {
                 dataQueue.add(new ImageData(data));
@@ -267,22 +284,50 @@ public class WSServer implements IWebsocketEvent, MinicapListener, MinitouchList
             } else {
                 sendImage(data);
             }
-            isWaitting = false;
         } else {
             clearObsoleteImage();
             dataQueue.add(new ImageData(data));
         }
+
+        //防止最后一张被limit了
+        if(lastScheduled!=null){
+            lastScheduled.cancel(true);
+        }
+        lastScheduled = executorService.schedule(() -> sendImage(lastJPG), permitsPerSecond, TimeUnit.SECONDS);
     }
 
-    public void setWaitting(boolean waitting) {
+
+    private void sendImage(byte[] data) {
+        //设置发送图片的频率
+        if (rateLimiterSendImage.tryAcquire()) {
+            byte[] head =  new byte[2];
+            head[0] = (BinaryProtocol.Header.SM_JPG) & 0xff;
+            head[1] = (BinaryProtocol.Header.SM_JPG >> 8) & 0xff;
+
+            int len = data.length;
+            byte[] lenbuf = new byte[4];
+            lenbuf[0] = (byte)((len) & 0xff);
+            lenbuf[1] = (byte)((len >> 8) & 0xff);
+            lenbuf[2] = (byte)((len >> 16) & 0xff);
+            lenbuf[3] = (byte)((len >> 24) & 0xff);
+
+            byte[] d = ArrayUtils.addAll(ArrayUtils.addAll(head, lenbuf), data);
+
+            channel.writeAndFlush(new BinaryWebSocketFrame(Unpooled.copiedBuffer(d)));
+            setWaitting(false);
+        }
+    }
+
+    private synchronized void setWaitting(boolean waitting) {
         isWaitting = waitting;
-        trySendImage();
+        if(waitting){
+            trySendImage();
+        }
     }
 
     private void trySendImage() {
         ImageData d = getUsefulImage();
         if (d != null) {
-            isWaitting = false;
             sendImage(d.data);
         }
     }
@@ -331,26 +376,6 @@ public class WSServer implements IWebsocketEvent, MinicapListener, MinitouchList
         b[0] = (byte) (n >> 24 & 0xff);
         return b;
     }
-
-    private void sendImage(byte[] data) {
-        
-        
-        byte[] head =  new byte[2];
-        head[0] = (BinaryProtocol.Header.SM_JPG) & 0xff;
-        head[1] = (BinaryProtocol.Header.SM_JPG >> 8) & 0xff;
-        
-        int len = data.length;
-        byte[] lenbuf = new byte[4];
-        lenbuf[0] = (byte)((len) & 0xff);
-        lenbuf[1] = (byte)((len >> 8) & 0xff);
-        lenbuf[2] = (byte)((len >> 16) & 0xff);
-        lenbuf[3] = (byte)((len >> 24) & 0xff);
-        
-        byte[] d = ArrayUtils.addAll(ArrayUtils.addAll(head, lenbuf), data);
-        
-        channel.writeAndFlush(new BinaryWebSocketFrame(Unpooled.copiedBuffer(d)));
-    }
-    
     /*********************************************************************************/
     
     @Override

@@ -151,10 +151,10 @@ public class AdbServer {
             
             if (adbDevice.getUsbDevice() == device.getUsbDevice()) {
                 logger.info("Android设备断开：" + adbDevice.getSerialNumber());
-                it.remove();
                 if (!listeners.isEmpty()) {
                     listeners.forEach(l -> l.onAdbDeviceDisConnected(device));
                 }
+                it.remove();
             }
         }
     }
