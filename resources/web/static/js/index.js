@@ -177,7 +177,7 @@ window.onload = function() {
     //     }
     // });
 
-    serverList.addServer('localhost', 6655)
+//    serverList.addServer('localhost', 6655)
 
     let hostname = window.location.hostname
     let port = window.location.port

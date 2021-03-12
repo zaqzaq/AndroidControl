@@ -83,9 +83,9 @@ public class WSServer implements IWebsocketEvent, MinicapListener, MinitouchList
     Channel channel = null;
 
     /**
-     * 发送图片限定每秒最多1张图片
+     * 发送图片限定每秒最多2张图片
      */
-    final int permitsPerSecond=1;
+    final int permitsPerSecond=2;
     RateLimiter rateLimiterSendImage=RateLimiter.create(permitsPerSecond);
     /**
      * 防止最后一张被limit了

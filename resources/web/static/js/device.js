@@ -3,11 +3,48 @@ let ip = window.location.hostname
 let port = window.location.port
 port=port==""?80:port
 
-const scaleDevice=0.3;//FIXME 后端minicap图片缩放质量
-const scaleDisplay=80;//FIXME 前端展示绽放大小比例
+const scaleDevice=.6//FIXME 后端minicap图片缩放质量
+let scaleDisplay=100;//FIXME 前端展示绽放大小比例
 const rotateDevice=false; //FIXME 是否后端minicap图片旋转
-const isPhone=document.documentElement.clientWidth<document.documentElement.clientHeight;
-const rotateDisplay=isPhone?90:0;//FIXME 前端展示旋转
+const rotateDisplay=0;//FIXME 前端展示旋转
+
+//是否竖屏
+const isPortrait = () => {
+    return document.documentElement.clientWidth < document.documentElement.clientHeight;
+}
+
+//判断移动端
+const isMobile=()=>{
+    return !!navigator.userAgent.match(/(phone|pad|pod|iPhone|iPod|ios|iPad|Android|Mobile|BlackBerry|IEMobile|MQQBrowser|JUC|Fennec|wOSBrowser|BrowserNG|WebOS|Symbian|Windows Phone)/i);
+}
+const $box = $('.phone-screen-box');
+const $phoneScreen = $('#phone-screen');
+
+const setSize = (w, h) => {
+    const rate = w / h;
+    const boxW = $box.width();
+    const boxH = $box.height();
+    const boxRate = boxW / boxH;
+
+    const size = rate > boxRate ? {
+        width: boxW,
+        height: boxW / rate
+    } : {
+        width: boxH * rate,
+        height: boxH
+    }
+    $phoneScreen.attr({
+        width:w,
+        height:h
+    });
+    $phoneScreen.css(size);
+
+    deviceInfo.physicsSize.w = size.width;
+    deviceInfo.physicsSize.h = size.height;
+
+    scaleDisplay = (size.width / w) * 100;
+}
+
 
 window.onload = function() {
 
@@ -16,8 +53,33 @@ window.onload = function() {
 
     deviceInfo.serialNumber = urlParams.sn
 
-    deviceInfo.physicsSize.w = urlParams.w
-    deviceInfo.physicsSize.h = urlParams.h
+    const $main=$('#main');
+
+    if(isMobile()){
+        $main.addClass('isMobile');
+        $('#rotateModal').modal('show');
+    }
+    setSize(urlParams.w,urlParams.h);
+
+    $('#full-screen').on('click',function(){
+        window.document.body.requestFullscreen().then(function(){
+            setTimeout(()=>{
+                setSize(urlParams.w,urlParams.h);
+                g.drawImage(canvas.img, 0, 0, canvas.width, canvas.height);
+            },0)
+        });
+        $('#rotateModal').modal('hide');
+    });
+
+    $(window).on('resize',function () {
+        if(isPortrait()){
+            $('.navbar,.footer').show()
+        }else if(isMobile()){
+            $('.navbar,.footer').hide()
+        }
+        setSize(urlParams.w,urlParams.h);
+        g.drawImage(canvas.img, 0, 0, canvas.width, canvas.height);
+    })
 
     // 滑动条初始化
     var displayScaleSlider = $("#display-scale-slider").slider({
@@ -152,9 +214,9 @@ window.onload = function() {
             var URL = window.URL || window.webkitURL;
             var img = new Image();
             img.onload = function () {
-                canvas.width = parseInt(deviceWindow.displaySize.w);
-                canvas.height = parseInt(deviceWindow.displaySize.h);
-                console.log(canvas.width, canvas.height)
+                // canvas.width = parseInt(deviceWindow.displaySize.w);
+                // canvas.height = parseInt(deviceWindow.displaySize.h);
+                // console.log(canvas.width, canvas.height)
                 g.drawImage(img, 0, 0, canvas.width, canvas.height);
                 img.onLoad = null;
                 img = null;
@@ -225,8 +287,8 @@ class DeviceWindow {
 
         let w = this.displaySize.w
         let h = this.displaySize.h + nav_height + footer_height
-        this.win.css('width', w + "px")
-        this.win.css('height', h + "px")
+        // this.win.css('width', w + "px")
+        // this.win.css('height', h + "px")
     }
 }
 
@@ -272,7 +334,7 @@ let deviceWindow = null
 let net = null
 
 let title = new Vue({
-    el: '#title',
+    // el: '#title',
     data: {
         displaySize: {w: 1080, h: 1920},
         outputScale: 0.3
@@ -350,12 +412,17 @@ $('#btn-scale').on('click', function() {
 
 // 获取鼠标在html中的绝对位置
 function mouseCoords(event){
-    if(event.pageX || event.pageY){
-        return {x:event.pageX, y:event.pageY};
+    let e = event;
+    //兼容touch事件
+    if (event.touches && event.touches.length) {
+        e = event.touches[0]
+    }
+    if(e.pageX || e.pageY){
+        return {x:e.pageX, y:e.pageY};
     }
     return{
-        x:event.clientX + document.body.scrollLeft - document.body.clientLeft,
-        y:event.clientY + document.body.scrollTop - document.body.clientTop
+        x:e.clientX + document.body.scrollLeft - document.body.clientLeft,
+        y:e.clientY + document.body.scrollTop - document.body.clientTop
     };
 }
 // 获取鼠标在控件的相对位置
@@ -393,8 +460,8 @@ function sendDown(argx, argy, isRo) {
         x = (canvas.height - argy) * (canvas.width / canvas.height);
         y = argx * (canvas.height / canvas.width);
     }
-    x = Math.round(x * scalex);
-    y = Math.round(y * scaley);
+    x = Math.round(x / scalex);
+    y = Math.round(y / scaley);
     var command = "d 0 " + x + " " + y + " 50\n";
     command += "c\n";
     sendTouchEvent(command);
@@ -408,8 +475,8 @@ function sendMove(argx, argy, isRo) {
         x = (canvas.height - argy) * (canvas.width / canvas.height);
         y = argx * (canvas.height / canvas.width);
     }
-    x = Math.round(x * scalex);
-    y = Math.round(y * scaley);
+    x = Math.round(x / scalex);
+    y = Math.round(y / scaley);
 
     var command = "m 0 " + x + " " + y + " 50\n";
     command += "c\n";
@@ -422,26 +489,27 @@ function sendUp() {
     sendTouchEvent(command);
 }
 
-canvas.onmousedown = function (event) {
+canvas.onmousedown =canvas.ontouchstart= function (event) {
     isDown = true;
     var pos = getXAndY(canvas, event);
     sendDown(pos.x, pos.y, deviceWindow.rotate);
 };
 
-canvas.onmousemove = function (event) {
+canvas.onmousemove =canvas.ontouchmove= function (event) {
     if (!isDown) {
         return;
     }
     var pos = getXAndY(canvas, event);
 
     sendMove(pos.x, pos.y, deviceWindow.rotate);
+    event.preventDefault();
 };
 
 canvas.onmouseover = function (event) {
     console.log("onmouseover");
 };
 
-canvas.onmouseout = function (event) {
+canvas.onmouseout = canvas.ontouchcancel=function (event) {
     if (!isDown) {
         return;
     }
@@ -449,10 +517,24 @@ canvas.onmouseout = function (event) {
     sendUp();
 };
 
-canvas.onmouseup = function (event) {
+canvas.onmouseup = canvas.ontouchend=function (event) {
     if (!isDown) {
         return;
     }
     isDown = false;
     sendUp();
 };
+
+if(isMobile()){
+    canvas.ontouchstart = canvas.onmousedown;
+    canvas.onmousedown=null;
+
+    canvas.ontouchmove = canvas.onmousemove;
+    canvas.onmousemove=null;
+
+    canvas.ontouchcancel = canvas.onmouseout;
+    canvas.onmouseout=null;
+
+    canvas.ontouchend = canvas.onmouseup;
+    canvas.onmouseup=null;
+}

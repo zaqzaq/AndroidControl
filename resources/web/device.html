@@ -2,6 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <link rel="stylesheet" href="static/lib/bootstrap-3.3.7/css/bootstrap.min.css">
     <link rel="stylesheet" href="static/lib/font-awesome-4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="static/lib/jquery-ui-1.12.1/jquery-ui.min.css">
@@ -10,10 +11,12 @@
   <body>
     <div id="main">
       <div class="content" id="content">
-        <nav class="navbar">
-            <p id="title" class="text-center">{{title}}</p>  
-        </nav>
-        <canvas id="phone-screen"></canvas>
+<!--        <nav class="navbar">-->
+<!--            <p id="title" class="text-center">{{title}}</p>  -->
+<!--        </nav>-->
+        <div class="phone-screen-box">
+          <canvas id="phone-screen"></canvas>
+        </div>
         <footer class="footer">
           <div class="container-fluid">
               <div class="row">
@@ -70,6 +73,20 @@
         </div>
       </div>
     </div>
+
+  <div class="modal" id="rotateModal" tabindex="-1" role="dialog" data-backdrop="static">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-body">
+          <div class="tips">
+            <p>请横屏浏览，获得最佳体验</p>
+            <button id="full-screen">我知道了</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   </body>
   <script src="static/lib/jquery-3.2.1.min.js"></script>
   <script>if (typeof module === 'object') {window.jQuery = window.$ = module.exports;};</script>

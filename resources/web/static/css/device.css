@@ -9,8 +9,20 @@ body {
 }
 
 #content {
-    display: inline-block;
-    text-align: center;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.phone-screen-box{
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 #phone-screen {
@@ -55,3 +67,15 @@ body {
     margin: 15vh auto;  
 }  
 
+
+#rotateModal .modal-dialog{
+    width: 80%;
+    top: 50%;
+    margin-top: 0;
+    transform: translateY(-50%);
+    text-align: center;
+}
+
+.tips p{
+    padding: 10px 0;
+}
