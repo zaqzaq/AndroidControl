@@ -97,7 +97,7 @@ public class Constant {
     }
     
     public static File getResourceDir() {
-        File resources = new File(properties.getProperty("resource.root"));
+        File resources = new File(properties.getProperty("resource.root","./resources"));
         return resources;
     }
 

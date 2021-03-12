@@ -107,13 +107,10 @@ public class HttpServer {
         try{
             RandomAccessFile raf = new RandomAccessFile(localFile, "r");
             ChunkedFile chunkedFile = new ChunkedFile(raf, 0, localFile.length(), 8192);
-            long fileSize = chunkedFile.length();
-
             response.headers().add(CONTENT_LENGTH, localFile.length());
             
             MimetypesFileTypeMap mimetypesFileTypeMap = new MimetypesFileTypeMap();
             response.headers().add(CONTENT_TYPE, mimetypesFileTypeMap.getContentType(localFile.getPath()));
-
 
             writeResponse(ctx, request, response, chunkedFile);
                     

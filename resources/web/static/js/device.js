@@ -1,9 +1,8 @@
-
 let ip = window.location.hostname
 let port = window.location.port
 port=port==""?80:port
 
-const scaleDevice=.6//FIXME 后端minicap图片缩放质量
+const scaleDevice=0.7//FIXME 后端minicap图片缩放质量
 let scaleDisplay=100;//FIXME 前端展示绽放大小比例
 const rotateDevice=false; //FIXME 是否后端minicap图片旋转
 const rotateDisplay=0;//FIXME 前端展示旋转
@@ -196,6 +195,7 @@ window.onload = function() {
             }
         },
         SM_OPENED(body) {
+            //读取 w,h
             net.request("M_START", {type: "cap", config: {rotate: deviceWindow.rotate ? 90 : 0, scale: deviceWindow.scale}})
             net.request("M_START", {type: "event"})
         },
