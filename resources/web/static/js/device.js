@@ -1,54 +1,76 @@
+
 let ip = window.location.hostname
 let port = window.location.port
 port=port==""?80:port
 
-const scaleDevice=0.7//FIXME 后端minicap图片缩放质量
-let scaleDisplay=100;//FIXME 前端展示绽放大小比例
-const rotateDevice=false; //FIXME 是否后端minicap图片旋转
-const rotateDisplay=0;//FIXME 前端展示旋转
+// 通过url参数初始化
+let urlParams = initWithUrlParams();
+
+//判断移动端
+const isMobile=()=>{
+    return !!navigator.userAgent.match(/(phone|pad|pod|iPhone|iPod|ios|iPad|Android|Mobile|BlackBerry|IEMobile|MQQBrowser|JUC|Fennec|wOSBrowser|BrowserNG|WebOS|Symbian|Windows Phone)/i);
+}
 
 //是否竖屏
 const isPortrait = () => {
     return document.documentElement.clientWidth < document.documentElement.clientHeight;
 }
 
-//判断移动端
-const isMobile=()=>{
-    return !!navigator.userAgent.match(/(phone|pad|pod|iPhone|iPod|ios|iPad|Android|Mobile|BlackBerry|IEMobile|MQQBrowser|JUC|Fennec|wOSBrowser|BrowserNG|WebOS|Symbian|Windows Phone)/i);
-}
+const scaleDevice=.6//FIXME 后端minicap图片缩放质量
+let scaleDisplay=100;//FIXME 前端展示绽放大小比例
+const rotateDevice=false; //FIXME 是否后端minicap图片旋转
+//初始旋转角度
+const initRotate = 90;
+//pc端不旋转
+let rotateDisplay = isMobile() ? initRotate : 0;//FIXME 前端展示旋转
+
 const $box = $('.phone-screen-box');
 const $phoneScreen = $('#phone-screen');
 
 const setSize = (w, h) => {
-    const rate = w / h;
+    const direction = rotateDisplay % 360;
+    const rate = direction ? h / w : w / h;
     const boxW = $box.width();
     const boxH = $box.height();
     const boxRate = boxW / boxH;
 
-    const size = rate > boxRate ? {
-        width: boxW,
-        height: boxW / rate
-    } : {
-        width: boxH * rate,
-        height: boxH
+    let size;
+    if(direction){
+        size  = rate > boxRate ? {
+            width: boxW/rate,
+            height:boxW
+        } : {
+            width: boxH,
+            height: boxH * rate
+        }
+    }else {
+        size = rate > boxRate ? {
+            width: boxW,
+            height: boxW / rate
+        } : {
+            width: boxH * rate,
+            height: boxH
+        }
     }
+
     $phoneScreen.attr({
         width:w,
         height:h
     });
     $phoneScreen.css(size);
+    $phoneScreen.css({
+        transform:'rotate('+rotateDisplay+'deg)'
+    })
 
     deviceInfo.physicsSize.w = size.width;
     deviceInfo.physicsSize.h = size.height;
 
     scaleDisplay = (size.width / w) * 100;
-}
 
+}
 
 window.onload = function() {
 
-    // 通过url参数初始化
-    let urlParams = initWithUrlParams();
 
     deviceInfo.serialNumber = urlParams.sn
 
@@ -56,26 +78,56 @@ window.onload = function() {
 
     if(isMobile()){
         $main.addClass('isMobile');
-        $('#rotateModal').modal('show');
+        // $('#rotateModal').modal('show');
     }
-    setSize(urlParams.w,urlParams.h);
+    if (rotateDisplay % 360) {
+        $main.addClass('is-landscape');
+    }
+    setSize(urlParams.w, urlParams.h);
 
-    $('#full-screen').on('click',function(){
-        window.document.body.requestFullscreen().then(function(){
-            setTimeout(()=>{
-                setSize(urlParams.w,urlParams.h);
-                g.drawImage(canvas.img, 0, 0, canvas.width, canvas.height);
-            },0)
-        });
+    //全屏完成回调
+    window.document.body.addEventListener('fullscreenchange',function(e){
+        setSize(urlParams.w, urlParams.h);
+        g.drawImage(canvas.img, 0, 0, canvas.width, canvas.height);
+    });
+
+    //请求全屏
+    const toFull=function () {
+        try {
+            if (window.document.body.requestFullscreen) {
+                window.document.body.requestFullscreen().catch(function (e){
+                    console.log('e',e)
+                });
+            } else {
+                window.document.body.webkitRequestFullscreen();
+            }
+        } catch (e) {
+            console.log('requestFullscreen err',e)
+        }
+    }
+
+    //横屏自动全屏
+    window.addEventListener('orientationchange', function(e){
+        if(screen.orientation.angle!==0){
+            if (rotateDisplay) {
+                rotateDisplay = 0
+            }
+            toFull();
+        }else{
+            if(initRotate){
+                rotateDisplay = initRotate
+            }
+        }
+        setSize(urlParams.w, urlParams.h);
+        g.drawImage(canvas.img, 0, 0, canvas.width, canvas.height);
+    },false);
+
+    $('#full-screen').on('click', function () {
+        toFull();
         $('#rotateModal').modal('hide');
     });
 
     $(window).on('resize',function () {
-        if(isPortrait()){
-            $('.navbar,.footer').show()
-        }else if(isMobile()){
-            $('.navbar,.footer').hide()
-        }
         setSize(urlParams.w,urlParams.h);
         g.drawImage(canvas.img, 0, 0, canvas.width, canvas.height);
     })
@@ -195,7 +247,6 @@ window.onload = function() {
             }
         },
         SM_OPENED(body) {
-            //读取 w,h
             net.request("M_START", {type: "cap", config: {rotate: deviceWindow.rotate ? 90 : 0, scale: deviceWindow.scale}})
             net.request("M_START", {type: "event"})
         },
@@ -365,7 +416,7 @@ var canvas = document.getElementById("phone-screen");
 var g = canvas.getContext('2d');
 
 //前端界面旋转
-canvas.style.transform = 'rotate('+(rotateDisplay%360)+'deg)'
+// canvas.style.transform = 'rotate('+(rotateDisplay%360)+'deg)'
 
 String.prototype.startWith=function(str){
     var reg=new RegExp("^"+str);
@@ -438,9 +489,27 @@ function getXAndY(control, event){
     var x1 = control.offsetLeft;
     var y1 = control.offsetTop;
 
+    //计算旋转后的坐标
+    var halfX = control.clientWidth / 2;
+    var halfY = control.clientHeight / 2;
+    var centerX = control.offsetLeft + halfX;
+    var centerY = control.offsetTop + halfY;
+    var angle = rotateDisplay * Math.PI / 180;
+    var xx = (x1 - centerX) * Math.cos(angle) - (y1 - centerY) * Math.sin(angle) + centerX;
+    var yy = (x1 - centerX) * Math.sin(angle) + (y1 - centerY) * Math.cos(angle) + centerY;
+    var left = rotateDisplay ? xx - control.clientHeight : xx;
+    var top = yy;
+
     //鼠标点击位置相对于div的坐标
-    var x2 = x - x1;
-    var y2 = y - y1;
+    var x2 = x - left;
+    var y2 = y - top;
+
+    if (rotateDisplay) {
+        //旋转后 转转x,y坐标
+        var tempX2 = x2;
+        x2 = y2;
+        y2 = control.clientHeight - tempX2;
+    }
     return {x:x2,y:y2};
 }
 

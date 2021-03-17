@@ -69,7 +69,7 @@ body {
 
 
 #rotateModal .modal-dialog{
-    width: 80%;
+    width: 60%;
     top: 50%;
     margin-top: 0;
     transform: translateY(-50%);
@@ -78,4 +78,44 @@ body {
 
 .tips p{
     padding: 10px 0;
+}
+
+.button-back{
+    position: fixed;
+    left: 10px;
+    top: 20px;
+    opacity: .8;
+    display: none;
+}
+
+@media all and (orientation: landscape) {
+    .button-back{
+        display: inherit;
+    }
+    .isMobile .footer{
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 42px;
+    }
+    .isMobile .footer .col-xs-3{
+        width: 100%;
+        float: none;
+        display: flex;
+        justify-content: center;
+        padding: 0;
+    }
+    .isMobile .footer .row{
+        margin: 0;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 42px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content:space-between;
+        align-items: center;
+    }
 }
